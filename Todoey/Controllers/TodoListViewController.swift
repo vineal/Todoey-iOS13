@@ -7,22 +7,24 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
     
     let userDefaults = UserDefaults.standard
     var itemArray: [Item] = []
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print(dataFilePath!)
+        print(dataFilePath)
         loadItems()
         
         
-//        if let listArry = userDefaults.array(forKey: "todoItemArray") as? [Item]{
-//            itemArray = listArry
-//        }
+        //        if let listArry = userDefaults.array(forKey: "todoItemArray") as? [Item]{
+        //            itemArray = listArry
+        //        }
     }
     //MARK: - TableView Datasource Methods
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -50,8 +52,10 @@ class TodoListViewController: UITableViewController {
         var textField = UITextField()
         let alert = UIAlertController(title: "Add a new Item", message: "", preferredStyle: .alert)
         let positiveAction = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            var newItem = Item()
+            
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             self.itemArray.append(newItem)
             self.saveItems()
         }
@@ -68,23 +72,19 @@ class TodoListViewController: UITableViewController {
     }
     //MARK: - Model Manupulation Methods
     func saveItems() {
-        let encoder = PropertyListEncoder()
         do{
-            let data = try encoder.encode(self.itemArray)
-            try data.write(to: self.dataFilePath!)
+            try context.save()
         }catch{
-            print("Error encoding Item Array: \(error)")
+            print("Error saving context \(error)")
         }
         self.tableView.reloadData()
     }
     func loadItems(){
-        if let data = try? Data(contentsOf: dataFilePath!){
-            do{
-            let decoder = PropertyListDecoder()
-            itemArray = try decoder.decode([Item].self, from: data)
-            }catch{
-                print("Error:\(error)")
-            }
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        do{
+            itemArray = try context.fetch(request)
+        }catch{
+            print("Error fetching data from context \(error)")
         }
     }
 }
